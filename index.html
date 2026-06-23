@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>الإمري — نظام إدارة المخازن</title>
+    <meta name="description" content="الإمري: نظام متكامل لإدارة المخازن والمبيعات والمشتريات والموردين والعملاء" />
+    <meta name="keywords" content="مخازن, إدارة مخازن, مستودعات, جرد, نقل بضاعة" />
+    <meta name="author" content="OnSpace" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="الإمري — نظام إدارة المخازن" />
+    <meta property="og:description" content="الإمري: نظام متكامل لإدارة المخازن والمبيعات" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="الإمري" />
+    <meta name="theme-color" content="#2563eb" />
+    <style>
+      /* Hide OnSpace promotional banner */
+      body > div:not(#root),
+      body > iframe,
+      body > div[style*="position: fixed"][style*="top: 0"],
+      body > div[style*="position:fixed"][style*="top:0"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        pointer-events: none !important;
+      }
+      #root {
+        position: relative;
+        z-index: 9999;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

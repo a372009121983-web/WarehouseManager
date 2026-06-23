@@ -166,7 +166,7 @@ const AIChatbot = () => {
     const dataKeywords = ['مخزون', 'مبيعات', 'مشتريات', 'ديون', 'مديون', 'منتج', 'عميل', 'مورد', 'ربح', 'خسارة', 'تحليل', 'تقرير', 'نواقص', 'أكثر', 'أقل', 'إجمالي'];
     const autoIncludeData = withData ?? dataKeywords.some(kw => content.includes(kw));
 
-    let reply = 'معلش، في مشكلة في الاتصال. حاول تاني.';
+    let reply = '';
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -181,18 +181,21 @@ const AIChatbot = () => {
         let errMsg = error.message;
         if (error instanceof FunctionsHttpError) {
           try {
+            const statusCode = error.context?.status ?? 500;
             const textContent = await error.context?.text();
-            errMsg = textContent || error.message;
+            errMsg = `[${statusCode}] ${textContent || error.message}`;
           } catch { /* noop */ }
         }
         console.error('AI error:', errMsg);
-        reply = 'حصل خطأ في المساعد الذكي. حاول تاني.';
+        reply = `⚠️ خطأ في الاتصال: ${errMsg}`;
       } else if (data?.reply) {
         reply = data.reply;
+      } else {
+        reply = 'الرد جه فاضي من السيرفر، حاول تاني.';
       }
     } catch (err) {
       console.error('Unexpected AI error:', err);
-      reply = 'خطأ غير متوقع. حاول تاني.';
+      reply = `⚠️ خطأ غير متوقع: ${String(err)}`;
     }
 
     const newIdx = newMessages.length;

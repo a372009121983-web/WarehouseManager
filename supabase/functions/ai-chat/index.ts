@@ -12,22 +12,22 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
+    console.log('env check: apiKey present=', !!apiKey, 'baseUrl=', baseUrl);
+
     if (!apiKey || !baseUrl) {
-      console.error('Missing AI env vars: apiKey=', !!apiKey, 'baseUrl=', !!baseUrl);
       return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
+        JSON.stringify({ error: 'AI service not configured — missing env vars' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const supabase = createClient(supabaseUrl, serviceKey);
-
     const body = await req.json();
     const { messages, includeData } = body;
 
-    console.log('ai-chat called, includeData=', includeData, 'messages count=', messages?.length);
+    console.log('ai-chat called, includeData=', includeData, 'msgs=', messages?.length);
 
-    // Get caller's identity + owner_id for data isolation
+    // ── Caller identity ────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization');
     let ownerFilter: string | null = null;
     let callerRole: string | null = null;
@@ -38,106 +38,83 @@ Deno.serve(async (req) => {
       if (user) {
         const { data: rpc } = await supabase.rpc('get_owner_id' as never, { uid: user.id });
         ownerFilter = rpc as string | null;
-
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('role, full_name, username')
+          .select('role, full_name')
           .eq('id', user.id)
           .single();
         if (profile) callerRole = profile.role;
       }
     }
 
-    // ── App Context (structure, pages, capabilities) ──────────────────────
+    // ── App Context ────────────────────────────────────────────────────────
     const appContext = `
 === نظام المخازن "الإمري" — هيكل التطبيق الكامل ===
 
-**وصف النظام:**
-نظام إدارة مخازن ومبيعات متكامل مبني بـ React + TypeScript + Supabase. يدعم multi-tenancy ونظام صلاحيات متعدد المستويات.
+**الصفحات:**
+1. / — لوحة التحكم: KPIs، مخطط 14 يوم، ملخص الشهر، حالة المخازن
+2. /sales — المبيعات: فواتير، ديون آجل/جزئي، طباعة، دفعات
+3. /purchases — المشتريات: شراء من موردين، مدفوعات
+4. /products — المنتجات: CRUD، أسعار، استيراد CSV، كميات
+5. /inventory — المخزون: جرد، كميات، حد أدنى
+6. /warehouses — المخازن: إنشاء وإدارة، نسبة إشغال
+7. /transfers — التحويلات: نقل بضاعة بين مخازن، سائق
+8. /customers — العملاء: مديونيات، دفعات، استيراد CSV
+9. /suppliers — الموردين: ديون، مدفوعات
+10. /expenses — المصروفات: فئات
+11. /damages — التالف: تسجيل التلف
+12. /returns — المرتجعات: مبيعات وشراء
+13. /workers — الموظفين: رواتب، سلف
+14. /reports — التقارير: مالية ومخزون
+15. /alerts — التنبيهات: مخزون منخفض
+16. /daily — اليومية
+17. /settings — الإعدادات
 
-**الصفحات والوظائف:**
-1. /  — لوحة التحكم: KPIs (مبيعات اليوم، صافي الربح، المخزون)، مخطط منحنى 14 يوم للمبيعات والمشتريات، ملخص الشهر، حالة المخازن، آخر الفواتير
-2. /sales — المبيعات: إنشاء فواتير، متابعة الديون (آجل/جزئي)، طباعة فواتير، تسجيل دفعات
-3. /purchases — المشتريات: شراء من موردين، تسجيل مدفوعات، ربط بالمخازن
-4. /products — المنتجات: إضافة/تعديل منتجات، سعر شراء وبيع ونطاق، استيراد CSV، إضافة كمية للمخزون
-5. /inventory — المخزون: جرد كل مخزن، تتبع الكميات والحد الأدنى
-6. /warehouses — المخازن: إنشاء وإدارة المخازن، نسبة الإشغال
-7. /transfers — التحويلات: نقل بضاعة بين المخازن، تتبع حالة التحويل، تعيين سائق
-8. /customers — العملاء: إدارة العملاء، متابعة المديونيات، تسجيل دفعات وسلف، استيراد CSV
-9. /suppliers — الموردين: إدارة الموردين، متابعة الديون
-10. /expenses — المصروفات: تسجيل مصروفات بفئات مختلفة
-11. /damages — التالف: تسجيل البضاعة التالفة أو المفقودة
-12. /returns — المرتجعات: مرتجع مبيعات وشراء
-13. /workers — الموظفين: إدارة الموظفين، الرواتب، السلف
-14. /reports — التقارير: تقارير مالية، مخزون، مبيعات
-15. /alerts — التنبيهات: تنبيهات المخزون المنخفض
-16. /daily — اليومية: سجل العمليات اليومية
-17. /settings — الإعدادات: إعدادات الحساب والنظام
+**الأدوار:** admin (كامل) | warehouse_manager (مخازن ومنتجات) | driver (تحويلات) | worker (مبيعات ومشتريات) | boss (عرض فقط)
 
-**أدوار المستخدمين:**
-- admin: صلاحيات كاملة
-- warehouse_manager: إدارة المخازن والمنتجات
-- driver: تحديث حالة التحويلات فقط
-- worker: المبيعات والمشتريات فقط
-- boss: عرض كل شيء بدون تعديل
+**التقنيات:** React 18 + TypeScript + Tailwind + Supabase + Recharts
 
-**التقنيات:**
-- Frontend: React 18 + TypeScript + Tailwind CSS + shadcn/ui
-- Backend: Supabase (PostgreSQL + RLS + Edge Functions)
-- State: React Query (server state) + useState (local state)
-- Charts: Recharts (AreaChart)
-- Auth: Supabase Auth + OTP
+**نقاط القوة:** multi-tenant، طباعة فواتير، استيراد CSV مع progress bar، عربي RTL كامل، Error Boundary
 
-**نقاط القوة الحالية:**
-- نظام multi-tenant كامل مع owner_id isolation
-- طباعة فواتير PDF داخل المتصفح
-- استيراد CSV مع progress bar وmعالجة أخطاء السطور
-- واجهة عربية بالكامل + دعم RTL
-- تصميم Minimalist نظيف مع مخطط منحني ناعم
-- Global Error Boundary يمنع الشاشة البيضاء
-
-**اقتراحات تطوير محتملة:**
-- إضافة باركود scanner لعمليات البيع والاستلام
-- تقارير PDF/Excel قابلة للتصدير
-- إشعارات push للموبايل عند نقص المخزون
-- لوحة تحكم بوس منفصلة بـ read-only views
-- دعم الفواتير بالعملات الأجنبية
-- نظام خصومات مرن على المنتجات
-- ربط مع تطبيقات المحاسبة (Quickbooks, Odoo)
-- تحسين تجربة الموبايل مع PWA offline support
+**اقتراحات تطوير:** باركود scanner، تصدير PDF/Excel، إشعارات push، لوحة boss منفصلة، خصومات مرنة، ربط محاسبة
 `;
 
-    // ── Live Data Context ─────────────────────────────────────────────────
+    // ── Live Data ──────────────────────────────────────────────────────────
     let contextData = '';
-
     if (includeData) {
       try {
-        let invQuery = supabase
-          .from('inventory')
-          .select('quantity, products(name, sku, unit, min_stock, purchase_price, price), warehouses(name, owner_id)')
-          .limit(100);
-
-        const { data: inventory, error: invErr } = await invQuery;
-        if (invErr) console.error('inventory fetch error:', invErr.message);
-
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-        let salesQ = supabase.from('sales').select('total_amount, paid_amount, status, sale_date, sale_items(product_name, quantity, unit_price)').gte('sale_date', dateStr).limit(50);
+        let salesQ = supabase.from('sales')
+          .select('total_amount, paid_amount, status, sale_date, sale_items(product_name, quantity, unit_price)')
+          .gte('sale_date', dateStr).limit(50);
         if (ownerFilter) salesQ = salesQ.eq('owner_id', ownerFilter);
 
-        let purchQ = supabase.from('purchases').select('total_amount, paid_amount, status, purchase_date').gte('purchase_date', dateStr).limit(30);
+        let purchQ = supabase.from('purchases')
+          .select('total_amount, paid_amount, purchase_date')
+          .gte('purchase_date', dateStr).limit(30);
         if (ownerFilter) purchQ = purchQ.eq('owner_id', ownerFilter);
 
-        let custQ = supabase.from('customers').select('name, balance').gt('balance', 0).order('balance', { ascending: false }).limit(20);
+        let custQ = supabase.from('customers')
+          .select('name, balance').gt('balance', 0)
+          .order('balance', { ascending: false }).limit(15);
         if (ownerFilter) custQ = custQ.eq('owner_id', ownerFilter);
 
-        let suppQ = supabase.from('suppliers').select('name, balance').gt('balance', 0).order('balance', { ascending: false }).limit(20);
+        let suppQ = supabase.from('suppliers')
+          .select('name, balance').gt('balance', 0)
+          .order('balance', { ascending: false }).limit(15);
         if (ownerFilter) suppQ = suppQ.eq('owner_id', ownerFilter);
 
-        let expQ = supabase.from('expenses').select('description, amount, category').gte('expense_date', dateStr).limit(30);
+        let expQ = supabase.from('expenses')
+          .select('description, amount, category')
+          .gte('expense_date', dateStr).limit(30);
         if (ownerFilter) expQ = expQ.eq('owner_id', ownerFilter);
+
+        let invQ = supabase.from('inventory')
+          .select('quantity, products(name, min_stock, purchase_price, price), warehouses(name)')
+          .limit(80);
 
         const [
           { data: sales },
@@ -145,25 +122,17 @@ Deno.serve(async (req) => {
           { data: customers },
           { data: suppliers },
           { data: expenses },
-        ] = await Promise.all([salesQ, purchQ, custQ, suppQ, expQ]);
-
-        const filteredInventory = ownerFilter
-          ? (inventory || []).filter((i: any) => !i.warehouses || i.warehouses.owner_id === ownerFilter)
-          : (inventory || []);
-
-        const invLines = filteredInventory.map((i: any) => {
-          const p = i.products;
-          const w = i.warehouses;
-          if (!p) return null;
-          const status = i.quantity === 0 ? 'نافد' : i.quantity < (p.min_stock || 0) ? 'منخفض' : 'وفير';
-          return `- ${p.name} | مخزن: ${w?.name || '؟'} | كمية: ${i.quantity} ${p.unit || ''} | ${status} | شراء: ${p.purchase_price || 0} | بيع: ${p.price || 0}`;
-        }).filter(Boolean).join('\n');
+          { data: inventory },
+        ] = await Promise.all([salesQ, purchQ, custQ, suppQ, expQ, invQ]);
 
         const salesTotal = (sales || []).reduce((s: number, x: any) => s + Number(x.total_amount || 0), 0);
-        const salesPaid = (sales || []).reduce((s: number, x: any) => s + Number(x.paid_amount || 0), 0);
+        const salesPaid  = (sales || []).reduce((s: number, x: any) => s + Number(x.paid_amount || 0), 0);
+        const purchTotal = (purchases || []).reduce((s: number, x: any) => s + Number(x.total_amount || 0), 0);
+        const expTotal   = (expenses || []).reduce((s: number, x: any) => s + Number(x.amount || 0), 0);
+        const netProfit  = salesTotal - purchTotal - expTotal;
 
-        const shortages = filteredInventory.filter((i: any) => i.quantity < (i.products?.min_stock || 0));
-        const shortageLines = shortages.map((i: any) => `- ${i.products?.name}: متبقي ${i.quantity}، الحد ${i.products?.min_stock}`).join('\n');
+        const shortages = (inventory || []).filter((i: any) => i.quantity < (i.products?.min_stock || 0));
+        const outOfStock = (inventory || []).filter((i: any) => i.quantity === 0);
 
         const productSales = new Map<string, number>();
         (sales || []).forEach((s: any) => {
@@ -172,87 +141,75 @@ Deno.serve(async (req) => {
           });
         });
         const topProducts = Array.from(productSales.entries())
-          .sort((a, b) => b[1] - a[1]).slice(0, 10)
+          .sort((a, b) => b[1] - a[1]).slice(0, 8)
           .map(([name, qty]) => `- ${name}: ${qty} وحدة`).join('\n');
 
-        const purchasesTotal = (purchases || []).reduce((s: number, x: any) => s + Number(x.total_amount || 0), 0);
-        const expensesTotal = (expenses || []).reduce((s: number, x: any) => s + Number(x.amount || 0), 0);
-        const netProfit = salesTotal - purchasesTotal - expensesTotal;
-
         contextData = `
-=== بيانات النظام الحية (آخر 30 يوم) ===
+=== بيانات حية (آخر 30 يوم) ===
 
-📦 المخزون (${filteredInventory.length} صنف):
-${invLines || 'لا توجد بيانات'}
-
-⚠️ النواقص (${shortages.length} صنف):
-${shortageLines || 'لا توجد نواقص - ممتاز!'}
-
-🏆 أكثر المنتجات مبيعاً:
-${topProducts || 'لا توجد بيانات'}
-
-💰 الأداء المالي (30 يوم):
-- المبيعات: ${salesTotal.toLocaleString()} ج.م (محصّل: ${salesPaid.toLocaleString()}، آجل: ${(salesTotal - salesPaid).toLocaleString()})
-- المشتريات: ${purchasesTotal.toLocaleString()} ج.م
-- المصروفات: ${expensesTotal.toLocaleString()} ج.م
+💰 الأداء المالي:
+- المبيعات: ${salesTotal.toLocaleString()} ج.م | محصّل: ${salesPaid.toLocaleString()} | آجل: ${(salesTotal - salesPaid).toLocaleString()}
+- المشتريات: ${purchTotal.toLocaleString()} ج.م
+- المصروفات: ${expTotal.toLocaleString()} ج.م
 - صافي الربح: ${netProfit.toLocaleString()} ج.م
 
-👥 مديونيات العملاء:
-${(customers || []).map((c: any) => `- ${c.name}: ${Number(c.balance).toLocaleString()} ج.م`).join('\n') || 'لا توجد مديونيات'}
+📦 المخزون: ${(inventory || []).length} صنف | نواقص: ${shortages.length} | نافد: ${outOfStock.length}
+${shortages.slice(0, 5).map((i: any) => `- ${i.products?.name}: ${i.quantity} (حد: ${i.products?.min_stock})`).join('\n')}
 
-🏭 مديونيات الموردين:
-${(suppliers || []).map((s: any) => `- ${s.name}: ${Number(s.balance).toLocaleString()} ج.م`).join('\n') || 'لا توجد مديونيات'}
+🏆 أكثر مبيعاً:
+${topProducts || 'لا بيانات'}
+
+👥 مديونيات عملاء:
+${(customers || []).map((c: any) => `- ${c.name}: ${Number(c.balance).toLocaleString()} ج.م`).join('\n') || 'لا مديونيات'}
+
+🏭 مديونيات موردين:
+${(suppliers || []).map((s: any) => `- ${s.name}: ${Number(s.balance).toLocaleString()} ج.م`).join('\n') || 'لا مديونيات'}
 `;
-      } catch (dataErr) {
-        console.error('Error fetching live data:', dataErr);
+      } catch (e) {
+        console.error('live data error:', e);
       }
     }
 
     // ── System Prompt ──────────────────────────────────────────────────────
-    const systemPrompt = `أنت مساعد ذكي متخصص في نظام إدارة المخازن "الإمري". بتتكلم بالعامية المصرية الصح وبشكل طبيعي ودافئ. 
+    const systemPrompt = `أنت مساعد ذكي متخصص في نظام إدارة المخازن "الإمري". بتتكلم بالعامية المصرية الطبيعية.
 
-**شخصيتك:**
-- بتتكلم زي المصريين: أيوه، تمام، جميل، معلش، يعني، طب، ماشي، والله، عندك حق، خد بالك
-- ردودك مختصرة وواضحة ومفيدة، مش رسمية ومش متكلفة
-- لو سألوك على أي حاجة بتجاوب بشكل ودود — نكت، معلومات عامة، نصيحة، أي حاجة
+شخصيتك: ودود، واضح، مفيد. بتستخدم كلمات زي: أيوه، تمام، ماشي، يعني، طب، والله.
+ردودك: مختصرة ومفيدة، مش متكلفة. تجاوب على أي سؤال — عام أو خاص بالتطبيق.
 
-**خبرتك:**
-- عارف كل تفاصيل التطبيق ده وصفحاته وإمكانياته
-- تقدر تديهم نصايح عملية لتطوير الشكل والإمكانيات
-- لو عندك بيانات حية، حللها وقدم رؤى مفيدة
-
-**دور المستخدم الحالي:** ${callerRole || 'غير معروف'}
+دور المستخدم الحالي: ${callerRole || 'غير معروف'}
 
 ${appContext}${contextData ? '\n' + contextData : ''}
 
-تذكر: ردودك بالعامية المصرية دايماً، مختصرة ومفيدة.`;
+دايماً بالعامية المصرية.`;
 
-    const requestBody = {
+    // ── Call OnSpace AI ────────────────────────────────────────────────────
+    const aiBody = {
       model: 'google/gemini-3-flash-preview',
       messages: [
         { role: 'system', content: systemPrompt },
-        ...(messages || []),
+        ...(messages || []).slice(-10),
       ],
       max_tokens: 1024,
     };
 
-    console.log('Calling AI API at:', baseUrl, 'model:', requestBody.model);
+    console.log('Calling:', `${baseUrl}/chat/completions`, 'model:', aiBody.model);
 
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const aiResponse = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(aiBody),
     });
 
-    const responseText = await response.text();
-    console.log('AI API status:', response.status);
+    const responseText = await aiResponse.text();
+    console.log('AI status:', aiResponse.status, '| response excerpt:', responseText.slice(0, 200));
 
-    if (!response.ok) {
+    if (!aiResponse.ok) {
+      console.error('AI API error:', aiResponse.status, responseText);
       return new Response(
-        JSON.stringify({ error: `AI API error [${response.status}]: ${responseText}` }),
+        JSON.stringify({ error: `AI API error [${aiResponse.status}]: ${responseText}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -261,20 +218,23 @@ ${appContext}${contextData ? '\n' + contextData : ''}
     try {
       data = JSON.parse(responseText);
     } catch {
+      console.error('JSON parse failed:', responseText.slice(0, 300));
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON from AI API' }),
+        JSON.stringify({ error: 'Invalid response from AI service' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const reply = data.choices?.[0]?.message?.content ?? 'عذراً، لم أتمكن من الإجابة.';
+    console.log('Reply generated, length=', reply.length);
 
     return new Response(
       JSON.stringify({ reply }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (err) {
-    console.error('ai-chat unexpected error:', err);
+    console.error('ai-chat fatal error:', err);
     return new Response(
       JSON.stringify({ error: String(err) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

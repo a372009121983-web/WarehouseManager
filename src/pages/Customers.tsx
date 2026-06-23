@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRef } from 'react';
-import { Users, Plus, Edit2, Trash2, Search, Phone, MapPin, CreditCard, TrendingDown, Upload, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, Search, Phone, MapPin, CreditCard, TrendingDown, Upload, FileText, ChevronDown, ChevronUp, XCircle, CheckCircle } from 'lucide-react';
 import { useInteraction } from '@/hooks/useInteraction';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ const Customers = () => {
   const { interact } = useInteraction();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; errors: string[] } | null>(null);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
@@ -116,20 +117,50 @@ const Customers = () => {
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const text = ev.target?.result as string;
-      const lines = text.split('\n').slice(1).filter(Boolean);
+      const rawLines = text.split('\n').slice(1).filter(l => l.trim());
+      const total = rawLines.length;
+      if (total === 0) { toast.error('الملف فارغ أو لا يحتوي على بيانات'); return; }
+
+      setImportProgress({ current: 0, total, errors: [] });
       let count = 0;
-      for (const line of lines) {
-        const cols = line.split(',');
-        if (!cols[0]?.trim()) continue;
-        const { error } = await supabase.from('customers').insert({
-          name: cols[0]?.trim(), phone: cols[1]?.trim() || '',
-          location: cols[2]?.trim() || '', notes: cols[3]?.trim() || '', balance: 0,
-        });
-        if (!error) count++;
+      const errors: string[] = [];
+
+      for (let idx = 0; idx < rawLines.length; idx++) {
+        const line = rawLines[idx];
+        try {
+          const cols = line.split(',');
+          const name = cols[0]?.trim();
+          if (!name) {
+            errors.push(`سطر ${idx + 2}: اسم العميل فارغ`);
+            setImportProgress({ current: idx + 1, total, errors: [...errors] });
+            continue;
+          }
+          const { error } = await supabase.from('customers').insert({
+            name,
+            phone: cols[1]?.trim() || '',
+            location: cols[2]?.trim() || '',
+            notes: cols[3]?.trim() || '',
+            balance: 0,
+          });
+          if (error) {
+            errors.push(`سطر ${idx + 2} (${name}): ${error.message}`);
+          } else {
+            count++;
+          }
+        } catch {
+          errors.push(`سطر ${idx + 2}: خطأ غير متوقع`);
+        }
+        setImportProgress({ current: idx + 1, total, errors: [...errors] });
       }
+
       qc.invalidateQueries({ queryKey: ['customers'] });
       interact('success');
-      toast.success(`تم استيراد ${count} عميل`);
+      if (errors.length === 0) {
+        toast.success(`تم استيراد ${count} عميل بنجاح`);
+        setTimeout(() => setImportProgress(null), 2000);
+      } else {
+        toast.warning(`تم استيراد ${count} عميل — ${errors.length} سطر به خطأ`);
+      }
     };
     reader.readAsText(file, 'UTF-8');
     e.target.value = '';
@@ -142,6 +173,54 @@ const Customers = () => {
 
   return (
     <div className="space-y-5">
+      {/* Import Progress Overlay */}
+      {importProgress && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-border shadow-xl p-6 w-full max-w-md animate-fade-up">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 gradient-emerald rounded-xl flex items-center justify-center flex-shrink-0">
+                <Upload className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground">استيراد العملاء</p>
+                <p className="text-xs text-muted-foreground">
+                  {importProgress.current < importProgress.total
+                    ? `جاري رفع ${importProgress.current} من ${importProgress.total}...`
+                    : `اكتمل — ${importProgress.current} سطر`}
+                </p>
+              </div>
+            </div>
+            <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-3">
+              <div
+                className="h-full gradient-emerald rounded-full transition-all duration-300"
+                style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center mb-3">
+              {Math.round((importProgress.current / importProgress.total) * 100)}% مكتمل
+            </p>
+            {importProgress.errors.length > 0 && (
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {importProgress.errors.map((err, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
+                    <XCircle className="w-3 h-3 text-red-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-red-700">{err}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {importProgress.current >= importProgress.total && importProgress.errors.length === 0 && (
+              <div className="flex items-center gap-2 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <span className="text-emerald-700 font-semibold">تم الاستيراد بنجاح!</span>
+              </div>
+            )}
+            {importProgress.current >= importProgress.total && (
+              <button className="mt-3 w-full gradient-emerald text-white rounded-xl py-2.5 text-sm font-semibold" onClick={() => setImportProgress(null)}>إغلاق</button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="glass rounded-xl p-4 border border-emerald-500/20 cursor-pointer stat-shine" onClick={() => interact('click')}>
           <p className="text-xs text-muted-foreground mb-1">إجمالي العملاء</p>

@@ -59,12 +59,16 @@
     @apply bg-background text-foreground;
     font-family: 'Cairo', sans-serif;
     direction: rtl;
+    /* Prevent elastic overscroll/bounce on mobile */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
   html {
     direction: rtl;
     /* Fix auto-zoom on iOS/Android for input fields */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    overscroll-behavior: none;
   }
 
   /* Prevent auto-zoom: all inputs must be >= 16px */

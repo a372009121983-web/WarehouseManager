@@ -146,8 +146,7 @@ const AIChatbot = () => {
     setListening(false);
   };
 
-  // ── Send message ──────────────────────────────────────────────────────────
-  const sendMessage = async (text?: string) => {
+  const sendMessage = async (text?: string, withData?: boolean) => {
     const content = (text || input).trim();
     if (!content || loading) return;
 
@@ -163,6 +162,10 @@ const AIChatbot = () => {
       content: m.content,
     }));
 
+    // Detect if message is about app data to auto-include live data
+    const dataKeywords = ['مخزون', 'مبيعات', 'مشتريات', 'ديون', 'مديون', 'منتج', 'عميل', 'مورد', 'ربح', 'خسارة', 'تحليل', 'تقرير', 'نواقص', 'أكثر', 'أقل', 'إجمالي'];
+    const autoIncludeData = withData ?? dataKeywords.some(kw => content.includes(kw));
+
     let reply = 'معلش، في مشكلة في الاتصال. حاول تاني.';
 
     try {
@@ -170,7 +173,7 @@ const AIChatbot = () => {
       const accessToken = sessionData?.session?.access_token;
 
       const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { messages: recentMessages, includeData: false, colloquial: true },
+        body: { messages: recentMessages, includeData: autoIncludeData, colloquial: true },
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
       });
 
@@ -192,11 +195,10 @@ const AIChatbot = () => {
       reply = 'خطأ غير متوقع. حاول تاني.';
     }
 
-    const newIdx = newMessages.length; // index of assistant reply
+    const newIdx = newMessages.length;
     setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     setLoading(false);
 
-    // Auto-speak the reply
     setTimeout(() => speakText(reply, newIdx), 100);
   };
 
@@ -211,10 +213,10 @@ const AIChatbot = () => {
 
   // ── Quick prompts ─────────────────────────────────────────────────────────
   const QUICK = [
-    'ازيك؟',
-    'مين أنت؟',
-    'ايه أخبار المخزن؟',
-    'قولي نكتة',
+    { label: 'حالة المخزون', msg: 'احكيلي عن حالة المخزون والنواقص دلوقتي', withData: true },
+    { label: 'تحليل مالي', msg: 'عملي تحليل للأداء المالي للشهر ده', withData: true },
+    { label: 'نصائح تطوير', msg: 'ايه نصايحك لتطوير التطبيق ده؟', withData: false },
+    { label: 'المنتجات الأكثر مبيعاً', msg: 'ايه أكثر المنتجات مبيعاً عندنا؟', withData: true },
   ];
 
   return (
@@ -347,9 +349,9 @@ const AIChatbot = () => {
           {messages.length <= 1 && (
             <div className="px-3 pt-2 pb-1 flex flex-wrap gap-1.5 border-t border-gray-100 flex-shrink-0 bg-white">
               {QUICK.map((q, i) => (
-                <button key={i} onClick={() => sendMessage(q)}
+                <button key={i} onClick={() => sendMessage(q.msg, q.withData)}
                   className="text-[11px] px-2.5 py-1 bg-violet-50 border border-violet-200 text-violet-700 rounded-xl hover:bg-violet-100 transition-all font-medium">
-                  {q}
+                  {q.label}
                 </button>
               ))}
             </div>

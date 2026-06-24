@@ -287,40 +287,10 @@ const Reports = () => {
   }), [workersData, workerTxns]);
 
   // ─── Save PDF ─────────────────────────────────────────────────────────────
-  const handleSavePDF = async () => {
+  const handleSavePDF = () => {
     interact('click');
-    toast.info('جاري تجهيز ملف PDF...');
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const tabLabel = TABS.find(t => t.id === activeTab)?.label || 'تقرير';
-      const printEl = document.createElement('div');
-      // Reuse the same HTML as print by temporarily opening it
-      const win = window.open('', '_blank');
-      if (!win) { toast.error('يرجى السماح بالنوافذ المنبثقة'); return; }
-      // Use the same print logic but save as PDF
-      const filterInfo = `${dateFrom ? ` من: ${dateFrom}` : ''}${dateTo ? ` إلى: ${dateTo}` : ''}${selectedWh ? ` | المخزن: ${selectedWh.name}` : ''}`;
-      const dateStr = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
-      // trigger print then close (html2pdf will handle the active tab content)
-      win.close();
-      // Get visible report table from DOM
-      const reportSection = document.querySelector('.space-y-4.animate-fade-up');
-      if (!reportSection) { toast.error('لم يتم العثور على محتوى التقرير'); return; }
-      const container = document.createElement('div');
-      container.style.cssText = 'direction:rtl;font-family:Cairo,Arial,sans-serif;background:#fff;padding:20px;';
-      container.innerHTML = `<h2 style="font-size:20px;font-weight:900;color:#1e293b;margin-bottom:16px">${tabLabel}</h2>${filterInfo ? `<p style="color:#64748b;font-size:12px;margin-bottom:12px">${filterInfo}</p>` : ''}` + reportSection.outerHTML;
-      document.body.appendChild(container);
-      await html2pdf().set({
-        margin: [10, 10, 10, 10],
-        filename: `${tabLabel}-${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.5, useCORS: true, logging: false, direction: 'rtl' },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-      }).from(container).save();
-      document.body.removeChild(container);
-      toast.success('تم حفظ PDF');
-    } catch (e) {
-      toast.error('تعذر حفظ PDF، جرب زر الطباعة');
-    }
+    toast.info('في نافذة الطباعة، اختر «حفظ كـ PDF» من قائمة الطابعة');
+    handlePrint();
   };
 
   // ─── Print ─────────────────────────────────────────────────────────────────

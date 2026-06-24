@@ -303,30 +303,15 @@ ${dayExpenses.length > 0 ? `
     setTimeout(() => win.print(), 600);
   };
 
-  const handleSavePDF = async () => {
+  const handleSavePDF = () => {
     interact('click');
-    toast.info('جاري تجهيز ملف PDF...');
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const container = document.createElement('div');
-      container.innerHTML = buildDailyHTML();
-      const bodyEl = container.querySelector('body');
-      const el = document.createElement('div');
-      el.style.cssText = 'direction:rtl;font-family:Cairo,Arial,sans-serif;background:#fff;';
-      el.innerHTML = bodyEl ? bodyEl.innerHTML : container.innerHTML;
-      document.body.appendChild(el);
-      await html2pdf().set({
-        margin: 0,
-        filename: `يومية-${selectedDate}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(el).save();
-      document.body.removeChild(el);
-      toast.success('تم حفظ ملف PDF');
-    } catch (e) {
-      toast.error('فشل تحميل ملف PDF، جرب الطباعة');
-    }
+    const win = window.open('', '_blank');
+    if (!win) { toast.error('يرجى السماح بالنوافذ المنبثقة'); return; }
+    win.document.write(buildDailyHTML());
+    win.document.close();
+    win.focus();
+    toast.info('في نافذة الطباعة، اختر «حفظ كـ PDF» من قائمة الطابعة');
+    setTimeout(() => win.print(), 700);
   };
 
   const handleExportExcel = () => {

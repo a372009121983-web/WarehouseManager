@@ -187,25 +187,6 @@ export const printInvoice = (opts: PrintOptions): void => {
 };
 
 export const saveInvoiceAsPDF = async (opts: PrintOptions): Promise<void> => {
-  const html2pdf = (await import('html2pdf.js')).default;
-  const container = document.createElement('div');
-  container.innerHTML = buildInvoiceHTML(opts);
-  // Extract just the body content for PDF
-  const bodyContent = container.querySelector('body');
-  const el = document.createElement('div');
-  el.style.direction = 'rtl';
-  el.style.fontFamily = 'Cairo, Arial, sans-serif';
-  el.innerHTML = bodyContent ? bodyContent.innerHTML : container.innerHTML;
-  document.body.appendChild(el);
-
-  const invNum = opts.invoiceNumber || 'invoice';
-  await html2pdf().set({
-    margin: 0,
-    filename: `${opts.type === 'sale' ? 'فاتورة' : 'أمر-شراء'}-${opts.invoiceDate}-${invNum}.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false, letterRendering: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-  }).from(el).save();
-
-  document.body.removeChild(el);
+  // Open print dialog — user selects "Save as PDF" from the printer list
+  printInvoice(opts);
 };

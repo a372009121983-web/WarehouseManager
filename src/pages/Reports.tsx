@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ElementType } from 'react';
 import {
   Archive, AlertTriangle, TrendingUp, TrendingDown, ArrowLeftRight,
   DollarSign, Printer, Download, Search, Package, Plus, Trash2,
@@ -35,7 +35,7 @@ interface ProductRow { id: string; name: string; sku: string; purchase_price: nu
 
 const EGP = (v: number) => v.toLocaleString('ar-EG', { minimumFractionDigits: 0 }) + ' ج.م';
 
-const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementType; color: string }[] = [
+const TABS: { id: Tab; label: string; shortLabel: string; icon: ElementType; color: string }[] = [
   { id: 'inventory', label: 'جرد المخزون', shortLabel: 'الجرد', icon: Archive, color: 'blue' },
   { id: 'shortages', label: 'النواقص', shortLabel: 'النواقص', icon: AlertTriangle, color: 'red' },
   { id: 'movement', label: 'حركة الأصناف', shortLabel: 'الحركة', icon: TrendingUp, color: 'violet' },

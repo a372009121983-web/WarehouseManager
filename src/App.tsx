@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -40,7 +41,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
   if (loading) {
     return (
@@ -56,14 +57,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Guard: redirects workers away from restricted pages
-const WorkerGuard = ({ children }: { children: React.ReactNode }) => {
+const WorkerGuard = ({ children }: { children: ReactNode }) => {
   const { profile } = useAuth();
   if (profile?.role === 'worker') return <Navigate to="/sales" replace />;
   return <>{children}</>;
 };
 
 // Guard: boss can view everything but cannot access settings
-const BossGuard = ({ children }: { children: React.ReactNode }) => {
+const BossGuard = ({ children }: { children: ReactNode }) => {
   const { profile } = useAuth();
   if (profile?.role === 'boss') return <Navigate to="/" replace />;
   return <>{children}</>;

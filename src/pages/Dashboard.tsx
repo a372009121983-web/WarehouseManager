@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ElementType } from 'react';
 import {
   TrendingUp, ShoppingCart, Wallet, DollarSign,
   Users, Package, Lightbulb, RefreshCw,
@@ -28,16 +28,7 @@ const TIPS = [
 ];
 
 // ── بطاقات اليوم ────────────────────────────────────────────────────────────
-interface CardDef {
-  label: string;
-  sub: string;
-  icon: React.ElementType;
-  from: string;
-  to: string;
-  glow: string;
-  value: number;
-  format?: (v: number) => string;
-}
+interface DashCard { label: string; value: string; sub: string; icon: ElementType; from: string; to: string; glow: string; }
 
 const Dashboard = () => {
   const [tipIndex, setTipIndex] = useState(0);
@@ -116,7 +107,7 @@ const Dashboard = () => {
   const netProfit      = totalSales - totalPurchases - totalExpenses;
   const profitable     = netProfit >= 0;
 
-  const cards = [
+  const cards: DashCard[] = [
     {
       label: 'مبيعات اليوم',
       value: EGP(totalSales),
@@ -187,7 +178,7 @@ const Dashboard = () => {
       {/* ── Glowing KPI Cards ───────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map((card, i) => {
-          const Icon = card.icon;
+          const Icon: ElementType = card.icon;
           return (
             <div
               key={i}
@@ -210,7 +201,7 @@ const Dashboard = () => {
                   </p>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: 'rgba(255,255,255,0.22)', backdropFilter: 'blur(4px)' }}>
-                    <Icon className="w-4.5 h-4.5 text-white" />
+                    <Icon className="w-5 h-5 text-white" />
                   </div>
                 </div>
                 <p className="text-2xl font-black leading-none tracking-tight break-all">

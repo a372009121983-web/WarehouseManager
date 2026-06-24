@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Package, Search, AlertTriangle, TrendingDown, CheckCircle, Edit2, RefreshCw } from 'lucide-react';
 import { useInteraction } from '@/hooks/useInteraction';
 import { toast } from 'sonner';
@@ -60,7 +60,7 @@ const Inventory = () => {
     return matchSearch && matchStatus;
   });
 
-  const statusConfig: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+  const statusConfig: Record<string, { icon: ReactNode; color: string; bg: string }> = {
     'وفير':   { icon: <CheckCircle className="w-3.5 h-3.5" />,  color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
     'منخفض':  { icon: <TrendingDown className="w-3.5 h-3.5" />, color: 'text-amber-600',   bg: 'bg-amber-50 border-amber-200' },
     'نافد':   { icon: <AlertTriangle className="w-3.5 h-3.5" />, color: 'text-red-600',     bg: 'bg-red-50 border-red-200' },

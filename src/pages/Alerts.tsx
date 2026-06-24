@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Bell, AlertTriangle, Info, CheckCircle, XCircle, Trash2, CheckCheck } from 'lucide-react';
 import { useInteraction } from '@/hooks/useInteraction';
 import { toast } from 'sonner';
@@ -46,7 +46,7 @@ const Alerts = () => {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['alerts'] }); interact('delete'); toast.info('تم حذف التنبيه'); },
   });
 
-  const typeConfig: Record<string, { icon: React.ReactNode; color: string; bg: string; border: string }> = {
+  const typeConfig: Record<string, { icon: ReactNode; color: string; bg: string; border: string }> = {
     'خطأ': { icon: <XCircle className="w-4 h-4" />, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/25' },
     'تحذير': { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/25' },
     'معلومة': { icon: <Info className="w-4 h-4" />, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/25' },

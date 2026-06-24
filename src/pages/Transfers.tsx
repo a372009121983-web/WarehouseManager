@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ArrowLeftRight, Plus, Truck, CheckCircle, Clock, XCircle, AlertCircle, Search, Eye, ScanLine } from 'lucide-react';
 import { useInteraction } from '@/hooks/useInteraction';
 import { toast } from 'sonner';
@@ -98,7 +98,7 @@ const Transfers = () => {
     onSuccess: (_, { status }) => { qc.invalidateQueries({ queryKey: ['transfers'] }); interact(status === 'مكتمل' ? 'success' : 'click'); toast.success(`تم تغيير الحالة إلى: ${status}`); },
   });
 
-  const statusConfig: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
+  const statusConfig: Record<string, { icon: ReactNode; color: string; bg: string }> = {
     'قيد التنفيذ': { icon: <Truck className="w-3.5 h-3.5" />, color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/25' },
     'مكتمل': { icon: <CheckCircle className="w-3.5 h-3.5" />, color: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/25' },
     'معلق': { icon: <Clock className="w-3.5 h-3.5" />, color: 'text-amber-400', bg: 'bg-amber-500/15 border-amber-500/25' },

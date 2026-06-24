@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, type ElementType } from 'react';
 import { Shield, UserCheck, UserX, Edit2, Search, Truck as TruckIcon, User, Plus, Trash2, CreditCard, TrendingDown, DollarSign } from 'lucide-react';
 import { useInteraction } from '@/hooks/useInteraction';
 import { toast } from 'sonner';
@@ -41,7 +41,7 @@ interface TxnResult {
   advance?: number;
 }
 
-const ROLES: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+const ROLES: Record<string, { label: string; color: string; icon: ElementType }> = {
   admin:             { label: 'مدير النظام', color: 'text-red-600 bg-red-50 border-red-200',              icon: Shield },
   warehouse_manager: { label: 'مدير مخزن',   color: 'text-blue-600 bg-blue-50 border-blue-200',           icon: User },
   driver:            { label: 'سائق',         color: 'text-emerald-600 bg-emerald-50 border-emerald-200',  icon: TruckIcon },

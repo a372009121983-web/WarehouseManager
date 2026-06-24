@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import AIChatbot from '@/components/features/AIChatbot';
 
 const pageTitles: Record<string, string> = {
   '/': 'لوحة التحكم — الإمري',
@@ -30,22 +29,20 @@ const AppLayout = () => {
   const location = useLocation();
   const title = pageTitles[location.pathname] || 'النظام';
 
-  // Auto-request fullscreen on first load
   useEffect(() => {
     const requestFS = () => {
       const el = document.documentElement;
       if (!document.fullscreenElement && el.requestFullscreen) {
-        el.requestFullscreen().catch(() => {/* user declined or not supported */});
+        el.requestFullscreen().catch(() => {});
       }
     };
-    // Delay slightly so browser allows it after user interaction (page load)
     const handler = () => { requestFS(); document.removeEventListener('click', handler); };
     document.addEventListener('click', handler, { once: true });
     return () => document.removeEventListener('click', handler);
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-slate-50 flex">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0 lg:mr-64">
         <Header onMenuClick={() => setSidebarOpen(true)} title={title} />
@@ -53,7 +50,6 @@ const AppLayout = () => {
           <Outlet />
         </main>
       </div>
-      <AIChatbot />
     </div>
   );
 };

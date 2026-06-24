@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { useRef } from 'react';
-import { Truck, Plus, Edit2, Trash2, Search, Phone, MapPin, CreditCard, Upload } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Truck, Plus, Edit2, Trash2, Search, Phone, MapPin, CreditCard, Upload, XCircle, CheckCircle } from 'lucide-react';
 import { useInteraction } from '@/hooks/useInteraction';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -9,11 +8,16 @@ import { supabase } from '@/lib/supabase';
 import type { Supplier, SupplierPayment } from '@/types';
 
 const EGP = (v: number) => v.toLocaleString('ar-EG', { minimumFractionDigits: 2 }) + ' ج.م';
+const INPUT = 'w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all';
+const BTN_PRIMARY = 'flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition-all duration-200 active:scale-95';
+const BTN_SECONDARY = 'flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-sm font-medium transition-all duration-200';
+const CARD = 'bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200';
 
 const Suppliers = () => {
   const { interact } = useInteraction();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; errors: string[] } | null>(null);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
@@ -37,35 +41,25 @@ const Suppliers = () => {
     queryKey: ['supplier-payments', selectedSupplier?.id],
     enabled: !!selectedSupplier,
     queryFn: async () => {
-      const { data } = await supabase.from('supplier_payments').select('*')
-        .eq('supplier_id', selectedSupplier!.id).order('payment_date', { ascending: false }).limit(10);
+      const { data } = await supabase.from('supplier_payments').select('*').eq('supplier_id', selectedSupplier!.id).order('payment_date', { ascending: false }).limit(10);
       return (data || []) as SupplierPayment[];
     },
   });
 
   const addMutation = useMutation({
-    mutationFn: async (p: typeof emptyForm) => {
-      const { error } = await supabase.from('suppliers').insert({ ...p, balance: 0 });
-      if (error) throw error;
-    },
+    mutationFn: async (p: typeof emptyForm) => { const { error } = await supabase.from('suppliers').insert({ ...p, balance: 0 }); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); interact('success'); toast.success('تم إضافة المورد'); setShowForm(false); },
     onError: (e: Error) => { interact('error'); toast.error(e.message); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: typeof emptyForm }) => {
-      const { error } = await supabase.from('suppliers').update(payload).eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: async ({ id, payload }: { id: string; payload: typeof emptyForm }) => { const { error } = await supabase.from('suppliers').update(payload).eq('id', id); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); interact('success'); toast.success('تم تحديث المورد'); setShowForm(false); },
     onError: (e: Error) => { interact('error'); toast.error(e.message); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('suppliers').delete().eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: async (id: string) => { const { error } = await supabase.from('suppliers').delete().eq('id', id); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); interact('delete'); toast.success('تم حذف المورد'); },
     onError: (e: Error) => { interact('error'); toast.error(e.message); },
   });
@@ -73,23 +67,12 @@ const Suppliers = () => {
   const paymentMutation = useMutation({
     mutationFn: async () => {
       if (!selectedSupplier) return;
-      const { error: e1 } = await supabase.from('supplier_payments').insert({
-        supplier_id: selectedSupplier.id,
-        supplier_name: selectedSupplier.name,
-        amount: paymentForm.amount,
-        notes: paymentForm.notes,
-        payment_date: new Date().toISOString().split('T')[0],
-      });
+      const { error: e1 } = await supabase.from('supplier_payments').insert({ supplier_id: selectedSupplier.id, supplier_name: selectedSupplier.name, amount: paymentForm.amount, notes: paymentForm.notes, payment_date: new Date().toISOString().split('T')[0] });
       if (e1) throw e1;
       const { error: e2 } = await supabase.from('suppliers').update({ balance: (selectedSupplier.balance || 0) - paymentForm.amount }).eq('id', selectedSupplier.id);
       if (e2) throw e2;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['suppliers'] });
-      qc.invalidateQueries({ queryKey: ['supplier-payments'] });
-      interact('success'); toast.success('تم تسجيل الدفعة');
-      setShowPayment(false); setPaymentForm({ amount: 0, notes: '' });
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); qc.invalidateQueries({ queryKey: ['supplier-payments'] }); interact('success'); toast.success('تم تسجيل الدفعة'); setShowPayment(false); setPaymentForm({ amount: 0, notes: '' }); },
     onError: (e: Error) => { interact('error'); toast.error(e.message); },
   });
 
@@ -99,23 +82,25 @@ const Suppliers = () => {
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const text = ev.target?.result as string;
-      const lines = text.split('\n').slice(1).filter(Boolean);
+      const rawLines = text.split('\n').slice(1).filter(l => l.trim());
+      const total = rawLines.length;
+      if (total === 0) { toast.error('الملف فارغ'); return; }
+      setImportProgress({ current: 0, total, errors: [] });
       let count = 0;
-      for (const line of lines) {
-        const cols = line.split(',');
-        if (!cols[0]?.trim()) continue;
-        const { error } = await supabase.from('suppliers').insert({
-          name: cols[0]?.trim(),
-          phone: cols[1]?.trim() || '',
-          location: cols[2]?.trim() || '',
-          notes: cols[3]?.trim() || '',
-          balance: 0,
-        });
-        if (!error) count++;
+      const errors: string[] = [];
+      for (let idx = 0; idx < rawLines.length; idx++) {
+        const cols = rawLines[idx].split(',');
+        const name = cols[0]?.trim();
+        if (!name) { errors.push(`سطر ${idx + 2}: الاسم فارغ`); setImportProgress({ current: idx + 1, total, errors: [...errors] }); continue; }
+        const { error } = await supabase.from('suppliers').insert({ name, phone: cols[1]?.trim() || '', location: cols[2]?.trim() || '', notes: cols[3]?.trim() || '', balance: 0 });
+        if (error) errors.push(`سطر ${idx + 2}: ${error.message}`);
+        else count++;
+        setImportProgress({ current: idx + 1, total, errors: [...errors] });
       }
       qc.invalidateQueries({ queryKey: ['suppliers'] });
       interact('success');
-      toast.success(`تم استيراد ${count} مورد`);
+      if (errors.length === 0) { toast.success(`تم استيراد ${count} مورد`); setTimeout(() => setImportProgress(null), 2000); }
+      else toast.warning(`تم استيراد ${count} مورد — ${errors.length} خطأ`);
     };
     reader.readAsText(file, 'UTF-8');
     e.target.value = '';
@@ -124,148 +109,213 @@ const Suppliers = () => {
   const filtered = suppliers.filter(s => s.name.includes(search) || (s.phone || '').includes(search));
   const totalOwed = suppliers.reduce((s, c) => s + (c.balance > 0 ? c.balance : 0), 0);
 
-  if (isLoading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 gradient-violet rounded-xl animate-pulse" /></div>;
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 bg-slate-800 rounded-xl animate-pulse" />
+        <p className="text-sm text-slate-400">جاري التحميل...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <div className="glass rounded-xl p-4 border border-violet-500/20 cursor-pointer stat-shine" onClick={() => interact('click')}>
-          <p className="text-xs text-muted-foreground mb-1">إجمالي الموردين</p>
-          <p className="text-2xl font-bold text-violet-400">{suppliers.length}</p>
-        </div>
-        <div className="glass rounded-xl p-4 border border-amber-500/20 cursor-pointer stat-shine" onClick={() => interact('click')}>
-          <p className="text-xs text-muted-foreground mb-1">مستحق للموردين</p>
-          <p className="text-xl font-bold text-amber-400">{EGP(totalOwed)}</p>
-        </div>
-        <div className="glass rounded-xl p-4 border border-blue-500/20 cursor-pointer stat-shine col-span-2 lg:col-span-1" onClick={() => interact('click')}>
-          <p className="text-xs text-muted-foreground mb-1">موردون برصيد مستحق</p>
-          <p className="text-2xl font-bold text-blue-400">{suppliers.filter(s => s.balance > 0).length}</p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input type="text" placeholder="البحث بالاسم أو الهاتف..." value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full bg-card border border-border rounded-xl py-2.5 pr-10 pl-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50" />
-        </div>
-        <button className="icon-btn gap-2 px-3 py-2.5 glass text-cyan-400 border border-cyan-500/25 rounded-xl text-sm" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="w-4 h-4" /><span className="hidden sm:inline">استيراد Excel</span>
-        </button>
-        <input ref={fileInputRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImportExcel} />
-        <button className="icon-btn gradient-violet text-white px-4 py-2.5 gap-2 rounded-xl text-sm font-semibold"
-          onClick={() => { interact('add'); setEditItem(null); setForm(emptyForm); setShowForm(true); }}>
-          <Plus className="w-4 h-4" /><span>إضافة مورد</span>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((supplier, i) => (
-          <div key={supplier.id} className="glass rounded-2xl p-4 border border-border glass-hover animate-fade-up" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 gradient-violet rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Truck className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="font-bold text-sm text-foreground">{supplier.name}</p>
-                  {supplier.phone && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Phone className="w-3 h-3" /><span dir="ltr">{supplier.phone}</span>
-                    </div>
-                  )}
-                </div>
+      {/* Import Progress */}
+      {importProgress && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl p-6 w-full max-w-md animate-fade-up">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Upload className="w-5 h-5 text-white" />
               </div>
-              <div className={cn('text-right', supplier.balance > 0 ? 'text-amber-400' : 'text-emerald-400')}>
-                <p className="text-xs">{supplier.balance > 0 ? 'مستحق' : 'سوا'}</p>
-                <p className="font-bold text-sm">{EGP(Math.abs(supplier.balance))}</p>
+              <div>
+                <p className="font-bold text-slate-800">استيراد الموردين</p>
+                <p className="text-xs text-slate-500">{importProgress.current < importProgress.total ? `جاري رفع ${importProgress.current} من ${importProgress.total}...` : 'اكتمل'}</p>
               </div>
             </div>
-            {supplier.location && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
-                <MapPin className="w-3 h-3" /><span>{supplier.location}</span>
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
+              <div className="h-full bg-slate-800 rounded-full transition-all" style={{ width: `${Math.round((importProgress.current / importProgress.total) * 100)}%` }} />
+            </div>
+            {importProgress.errors.length > 0 && (
+              <div className="max-h-28 overflow-y-auto space-y-1 mb-3">
+                {importProgress.errors.map((err, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
+                    <XCircle className="w-3 h-3 text-red-500 flex-shrink-0 mt-0.5" /><span className="text-red-700">{err}</span>
+                  </div>
+                ))}
               </div>
             )}
-            <div className="flex gap-2">
-              <button className="flex-1 icon-btn gap-1.5 py-2 glass text-violet-400 hover:text-violet-300 text-xs border border-violet-500/20"
-                onClick={() => { interact('click'); setSelectedSupplier(supplier); setPaymentForm({ amount: 0, notes: '' }); setShowPayment(true); }}>
-                <CreditCard className="w-3.5 h-3.5" /><span>دفعة</span>
-              </button>
-              <button className="icon-btn w-8 h-8 glass text-muted-foreground hover:text-primary"
-                onClick={() => { interact('click'); setEditItem(supplier); setForm({ name: supplier.name, phone: supplier.phone || '', location: supplier.location || '', notes: supplier.notes || '' }); setShowForm(true); }}>
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
-              <button className="icon-btn w-8 h-8 glass text-muted-foreground hover:text-red-400" onClick={() => deleteMutation.mutate(supplier.id)}>
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {importProgress.current >= importProgress.total && importProgress.errors.length === 0 && (
+              <div className="flex items-center gap-2 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-3">
+                <CheckCircle className="w-4 h-4 text-emerald-600" /><span className="text-emerald-700 font-semibold">تم الاستيراد بنجاح!</span>
+              </div>
+            )}
+            {importProgress.current >= importProgress.total && (
+              <button className="w-full bg-slate-800 text-white rounded-xl py-2.5 text-sm font-semibold" onClick={() => setImportProgress(null)}>إغلاق</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        {[
+          { label: 'إجمالي الموردين', val: suppliers.length, border: 'border-blue-200', bg: 'bg-blue-50', text: 'text-blue-700' },
+          { label: 'مستحق للموردين', val: EGP(totalOwed), border: 'border-amber-200', bg: 'bg-amber-50', text: 'text-amber-700' },
+          { label: 'موردون برصيد مستحق', val: suppliers.filter(s => s.balance > 0).length, border: 'border-red-200', bg: 'bg-red-50', text: 'text-red-700' },
+        ].map((s, i) => (
+          <div key={i} className={`rounded-xl p-4 border ${s.border} ${s.bg} ${i === 2 ? 'col-span-2 lg:col-span-1' : ''}`}>
+            <p className="text-xs text-slate-500 mb-1">{s.label}</p>
+            <p className={`text-xl font-bold ${s.text} break-all`}>{s.val}</p>
           </div>
         ))}
       </div>
 
+      {/* Toolbar */}
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input type="text" placeholder="البحث بالاسم أو الهاتف..." value={search} onChange={e => setSearch(e.target.value)} className={cn(INPUT, 'pr-10')} />
+        </div>
+        <button className={cn(BTN_SECONDARY)} onClick={() => fileInputRef.current?.click()}>
+          <Upload className="w-4 h-4" /><span className="hidden sm:inline">استيراد Excel</span>
+        </button>
+        <input ref={fileInputRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImportExcel} />
+        <button className={BTN_PRIMARY} onClick={() => { interact('add'); setEditItem(null); setForm(emptyForm); setShowForm(true); }}>
+          <Plus className="w-4 h-4" /><span>إضافة مورد</span>
+        </button>
+      </div>
+
+      {/* Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map((supplier, i) => (
+          <div key={supplier.id} className={cn(CARD, 'animate-fade-up')} style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
+            <div className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 bg-slate-700 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Truck className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-slate-800">{supplier.name}</p>
+                    {supplier.phone && (
+                      <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
+                        <Phone className="w-3 h-3" /><span dir="ltr">{supplier.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium border', supplier.balance > 0 ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200')}>
+                    {supplier.balance > 0 ? 'مستحق' : 'سوا'}
+                  </span>
+                  <p className={cn('font-bold text-sm mt-1', supplier.balance > 0 ? 'text-amber-600' : 'text-emerald-600')}>{EGP(Math.abs(supplier.balance))}</p>
+                </div>
+              </div>
+              {supplier.location && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
+                  <MapPin className="w-3 h-3" /><span>{supplier.location}</span>
+                </div>
+              )}
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs border border-blue-200 rounded-xl font-medium transition-all"
+                  onClick={() => { interact('click'); setSelectedSupplier(supplier); setPaymentForm({ amount: 0, notes: '' }); setShowPayment(true); }}>
+                  <CreditCard className="w-3.5 h-3.5" /><span>دفعة</span>
+                </button>
+                <button className="flex items-center justify-center w-9 h-9 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-blue-600 border border-slate-200 rounded-xl transition-all"
+                  onClick={() => { interact('click'); setEditItem(supplier); setForm({ name: supplier.name, phone: supplier.phone || '', location: supplier.location || '', notes: supplier.notes || '' }); setShowForm(true); }}>
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button className="flex items-center justify-center w-9 h-9 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 border border-slate-200 rounded-xl transition-all" onClick={() => deleteMutation.mutate(supplier.id)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-slate-400">
+            <Truck className="w-12 h-12 mb-3 opacity-25" />
+            <p className="text-sm font-medium mb-1">لا توجد موردين</p>
+            <p className="text-xs opacity-70">اضغط "إضافة مورد" لإضافة أول مورد</p>
+          </div>
+        )}
+      </div>
+
+      {/* Add/Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="glass w-full max-w-md rounded-2xl border border-border p-6 animate-fade-up">
-            <h2 className="text-lg font-bold text-foreground mb-5">{editItem ? 'تعديل المورد' : 'إضافة مورد جديد'}</h2>
-            <div className="space-y-3">
-              {[{ label: 'اسم المورد *', key: 'name' }, { label: 'رقم الهاتف', key: 'phone' }, { label: 'الموقع/العنوان', key: 'location' }, { label: 'ملاحظات', key: 'notes' }].map(({ label, key }) => (
-                <div key={key} className="flex flex-col gap-1">
-                  <label className="text-xs text-muted-foreground">{label}</label>
-                  <input type="text" value={String(form[key as keyof typeof form])} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
-                    className="bg-card border border-border rounded-xl py-2.5 px-3 text-sm text-foreground focus:outline-none focus:border-primary/50" />
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 animate-fade-up">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
+              <div className="w-9 h-9 bg-slate-800 rounded-xl flex items-center justify-center">
+                <Truck className="w-4.5 h-4.5 text-white" />
+              </div>
+              <h2 className="text-base font-bold text-slate-800">{editItem ? 'تعديل المورد' : 'إضافة مورد جديد'}</h2>
+            </div>
+            <div className="p-6 space-y-3">
+              {[{ label: 'اسم المورد *', key: 'name', placeholder: 'أدخل اسم المورد' }, { label: 'رقم الهاتف', key: 'phone', placeholder: 'رقم التواصل' }, { label: 'الموقع / العنوان', key: 'location', placeholder: 'المنطقة أو العنوان' }, { label: 'ملاحظات', key: 'notes', placeholder: 'أي ملاحظات إضافية' }].map(({ label, key, placeholder }) => (
+                <div key={key} className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-slate-600">{label}</label>
+                  <input type="text" value={String(form[key as keyof typeof form])} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} className={INPUT} />
                 </div>
               ))}
             </div>
-            <div className="flex gap-3 mt-5">
-              <button className="flex-1 gradient-violet text-white rounded-xl py-2.5 font-semibold" onClick={() => {
+            <div className="flex gap-3 px-6 pb-6">
+              <button className={cn(BTN_PRIMARY, 'flex-1')} onClick={() => {
                 if (!form.name) { interact('error'); toast.error('يرجى إدخال اسم المورد'); return; }
                 if (editItem) updateMutation.mutate({ id: editItem.id, payload: form });
                 else addMutation.mutate(form);
               }} disabled={addMutation.isPending || updateMutation.isPending}>
                 {editItem ? 'حفظ التعديلات' : 'إضافة المورد'}
               </button>
-              <button className="flex-1 glass text-muted-foreground rounded-xl py-2.5" onClick={() => { interact('click'); setShowForm(false); }}>إلغاء</button>
+              <button className={cn(BTN_SECONDARY, 'flex-1')} onClick={() => { interact('click'); setShowForm(false); }}>إلغاء</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Payment Modal */}
       {showPayment && selectedSupplier && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="glass w-full max-w-md rounded-2xl border border-border p-6 animate-fade-up">
-            <h2 className="text-lg font-bold text-foreground mb-1">تسجيل دفعة للمورد</h2>
-            <p className="text-sm text-muted-foreground mb-4">المورد: <span className="text-foreground font-semibold">{selectedSupplier.name}</span> | الرصيد: <span className="text-amber-400">{EGP(selectedSupplier.balance)}</span></p>
-            <div className="space-y-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">المبلغ (ج.م)</label>
-                <input type="number" value={paymentForm.amount} onChange={e => setPaymentForm(p => ({ ...p, amount: Number(e.target.value) }))}
-                  className="bg-card border border-border rounded-xl py-2.5 px-3 text-sm text-foreground focus:outline-none focus:border-primary/50" />
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 animate-fade-up">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100">
+              <div className="w-9 h-9 bg-slate-800 rounded-xl flex items-center justify-center">
+                <CreditCard className="w-4.5 h-4.5 text-white" />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-muted-foreground">ملاحظات</label>
-                <input type="text" value={paymentForm.notes} onChange={e => setPaymentForm(p => ({ ...p, notes: e.target.value }))}
-                  className="bg-card border border-border rounded-xl py-2.5 px-3 text-sm text-foreground focus:outline-none focus:border-primary/50" />
+              <div>
+                <h2 className="text-base font-bold text-slate-800">تسجيل دفعة للمورد</h2>
+                <p className="text-xs text-slate-400">{selectedSupplier.name} | رصيد: <span className="text-amber-600 font-bold">{EGP(selectedSupplier.balance)}</span></p>
               </div>
             </div>
-            {payments.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs text-muted-foreground mb-2">آخر الدفعات:</p>
-                <div className="space-y-1 max-h-28 overflow-y-auto">
-                  {payments.slice(0, 5).map(pay => (
-                    <div key={pay.id} className="flex justify-between text-xs px-2 py-1 bg-white/5 rounded-lg">
-                      <span className="text-violet-400">دفعة</span>
-                      <span className="text-foreground">{EGP(pay.amount)}</span>
-                      <span className="text-muted-foreground">{pay.payment_date}</span>
-                    </div>
-                  ))}
-                </div>
+            <div className="p-6 space-y-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-600">المبلغ (ج.م)</label>
+                <input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm(p => ({ ...p, amount: Number(e.target.value) }))} className={INPUT} />
               </div>
-            )}
-            <div className="flex gap-3 mt-5">
-              <button className="flex-1 gradient-violet text-white rounded-xl py-2.5 font-semibold" onClick={() => paymentMutation.mutate()} disabled={paymentMutation.isPending || !paymentForm.amount}>
-                تسجيل الدفعة
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-600">ملاحظات</label>
+                <input type="text" value={paymentForm.notes} onChange={e => setPaymentForm(p => ({ ...p, notes: e.target.value }))} placeholder="ملاحظات اختيارية" className={INPUT} />
+              </div>
+              {payments.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-2 font-medium">آخر الدفعات:</p>
+                  <div className="space-y-1 max-h-28 overflow-y-auto">
+                    {payments.slice(0, 5).map(pay => (
+                      <div key={pay.id} className="flex justify-between text-xs px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg">
+                        <span className="text-blue-600 font-medium">دفعة</span>
+                        <span className="text-slate-700 font-semibold">{EGP(pay.amount)}</span>
+                        <span className="text-slate-400">{pay.payment_date}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 px-6 pb-6">
+              <button className={cn(BTN_PRIMARY, 'flex-1')} onClick={() => paymentMutation.mutate()} disabled={paymentMutation.isPending || !paymentForm.amount}>
+                {paymentMutation.isPending ? 'جاري الحفظ...' : 'تسجيل الدفعة'}
               </button>
-              <button className="flex-1 glass text-muted-foreground rounded-xl py-2.5" onClick={() => { interact('click'); setShowPayment(false); }}>إلغاء</button>
+              <button className={cn(BTN_SECONDARY, 'flex-1')} onClick={() => { interact('click'); setShowPayment(false); }}>إلغاء</button>
             </div>
           </div>
         </div>

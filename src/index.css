@@ -56,16 +56,14 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-50 text-slate-800;
     font-family: 'Cairo', sans-serif;
     direction: rtl;
-    /* Prevent elastic overscroll/bounce on mobile */
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
   }
   html {
     direction: rtl;
-    /* Fix auto-zoom on iOS/Android for input fields */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     overscroll-behavior: none;

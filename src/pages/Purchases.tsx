@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
-import { ShoppingBag, Plus, Trash2, Search, Printer, Eye, Package, CreditCard, CheckCircle, Clock, X } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, Search, Printer, Eye, Package, CreditCard, CheckCircle, Clock, X, FileDown } from 'lucide-react';
 import { useInteraction } from '@/hooks/useInteraction';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Purchase, PurchaseItem, Supplier, Product } from '@/types';
-import { printInvoice } from '@/lib/printInvoice';
+import { printInvoice, saveInvoiceAsPDF } from '@/lib/printInvoice';
 
 const EGP = (v: number) => v.toLocaleString('ar-EG', { minimumFractionDigits: 2 }) + ' ج.م';
 const today = () => new Date().toISOString().split('T')[0];
@@ -143,10 +143,21 @@ const Purchases = () => {
   const totalAmount = purchaseItems.reduce((s, i) => s + i.total_price, 0);
   const autoStatus = calcStatus(totalAmount, form.paid_amount);
 
+  const buildPurchaseOpts = (purchase: Purchase) => {
+    const items = ((purchase as any).purchase_items || []) as PurchaseItem[];
+    return { type: 'purchase' as const, invoiceDate: purchase.purchase_date, status: purchase.status, warehouseName: purchase.warehouse_name || '', partyLabel: 'المورد', partyName: purchase.supplier_name || 'مورد غير محدد', items: items.map(it => ({ name: it.product_name, quantity: it.quantity, unit: it.unit || '', unit_price: it.unit_price, total_price: it.total_price })), totalAmount: purchase.total_amount, paidAmount: purchase.paid_amount, notes: (purchase as any).notes || '' };
+  };
+
   const handlePrint = (purchase: Purchase) => {
     interact('click');
-    const items = ((purchase as any).purchase_items || []) as PurchaseItem[];
-    printInvoice({ type: 'purchase', invoiceDate: purchase.purchase_date, status: purchase.status, warehouseName: purchase.warehouse_name || '', partyLabel: 'المورد', partyName: purchase.supplier_name || 'مورد غير محدد', items: items.map(it => ({ name: it.product_name, quantity: it.quantity, unit: it.unit || '', unit_price: it.unit_price, total_price: it.total_price })), totalAmount: purchase.total_amount, paidAmount: purchase.paid_amount, notes: (purchase as any).notes || '' });
+    printInvoice(buildPurchaseOpts(purchase));
+  };
+
+  const handleSavePDF = async (purchase: Purchase) => {
+    interact('click');
+    toast.info('جاري تجهيز PDF...');
+    await saveInvoiceAsPDF(buildPurchaseOpts(purchase));
+    toast.success('تم حفظ PDF');
   };
 
   const allStatuses = ['الكل', 'مكتملة', 'آجل', 'جزئي', 'ملغاة'];
@@ -254,6 +265,7 @@ const Purchases = () => {
                           <button className="flex items-center justify-center w-8 h-8 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-all" onClick={() => { interact('click'); setShowPayment(purchase); setPaymentForm({ amount: 0, notes: '', payment_date: today() }); }} title="دفعة"><CreditCard className="w-3.5 h-3.5" /></button>
                         )}
                         <button className="flex items-center justify-center w-8 h-8 bg-slate-100 hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 rounded-lg transition-all" onClick={() => handlePrint(purchase)} title="طباعة"><Printer className="w-3.5 h-3.5" /></button>
+                        <button className="flex items-center justify-center w-8 h-8 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-all" onClick={() => handleSavePDF(purchase)} title="حفظ PDF"><FileDown className="w-3.5 h-3.5" /></button>
                         <button className="flex items-center justify-center w-8 h-8 bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-all" onClick={() => deleteMutation.mutate(purchase.id)} title="حذف"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </td>
@@ -440,14 +452,17 @@ const Purchases = () => {
                 <div className="flex justify-between"><span className="text-slate-400">المدفوع:</span><span className="text-emerald-600">{EGP(showDetail.paid_amount)}</span></div>
                 <div className="flex justify-between text-amber-600 font-semibold"><span>المتبقي:</span><span>{EGP(showDetail.total_amount - showDetail.paid_amount)}</span></div>
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2 mt-4 flex-wrap">
                 {(showDetail.status === 'آجل' || showDetail.status === 'جزئي') && (
                   <button className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-sm font-semibold" onClick={() => { setShowDetail(null); setShowPayment(showDetail); setPaymentForm({ amount: 0, notes: '', payment_date: today() }); }}>
                     <CreditCard className="w-4 h-4" />تسجيل دفعة
                   </button>
                 )}
-                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-semibold" onClick={() => handlePrint(showDetail)}>
+                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold" onClick={() => handlePrint(showDetail)}>
                   <Printer className="w-4 h-4" />طباعة
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-semibold" onClick={() => handleSavePDF(showDetail)}>
+                  <FileDown className="w-4 h-4" />PDF
                 </button>
               </div>
             </div>

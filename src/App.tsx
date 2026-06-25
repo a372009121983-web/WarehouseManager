@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 // AIChatbot removed
 import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
-import Warehouses from "@/pages/Warehouses";
+// Warehouses page removed per user request
 import Inventory from "@/pages/Inventory";
 import Products from "@/pages/Products";
 import Transfers from "@/pages/Transfers";
@@ -101,7 +101,7 @@ const AppRoutes = () => {
         }
       >
         <Route path="/" element={<WorkerDashboardGuard />} />
-        <Route path="/warehouses" element={<WorkerGuard><Warehouses /></WorkerGuard>} />
+
         <Route path="/inventory" element={<WorkerGuard><Inventory /></WorkerGuard>} />
         <Route path="/products" element={<WorkerGuard><Products /></WorkerGuard>} />
         <Route path="/transfers" element={<WorkerGuard><Transfers /></WorkerGuard>} />

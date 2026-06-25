@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, type ElementType } from 'react';
 import {
   TrendingUp, ShoppingCart, Wallet, DollarSign,
@@ -165,7 +166,21 @@ const Dashboard = () => {
       }
     }, 1500);
     return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    alertsCount,
+    customerDebt,
+    dayExpenses.length,
+    dayPurchases.length,
+    daySales.length,
+    fetchAiTips, // Added `fetchAiTips` to dependency array
+    invValue,
+    netProfit,
+    profitable,
+    shortagesCount,
+    totalExpenses,
+    totalPurchases,
+    totalSales,
+  ]); 
 
   // Auto-rotate tips
   useEffect(() => {
@@ -197,8 +212,8 @@ const Dashboard = () => {
       value: EGP(totalPurchases),
       sub: `${(dayPurchases as any[]).length} أمر شراء`,
       icon: ShoppingCart,
-      from: '#3b82f6', to: '#1d4ed8',
-      glow: 'rgba(59,130,246,0.45)',
+      from: '#1d6b6b', to: '#2a8f8f',
+      glow: 'rgba(29,107,107,0.45)',
     },
     {
       label: 'مصروفات اليوم',
@@ -230,8 +245,8 @@ const Dashboard = () => {
       value: EGP(invValue as number),
       sub: (alertsCount as number) > 0 ? `⚠️ ${alertsCount} تنبيه غير مقروء` : 'بسعر الشراء',
       icon: Package,
-      from: '#06b6d4', to: '#0e7490',
-      glow: 'rgba(6,182,212,0.45)',
+      from: '#1d6b6b', to: '#155555',
+      glow: 'rgba(29,107,107,0.45)',
     },
   ];
 

@@ -47,10 +47,10 @@ const Header = ({ onMenuClick, title }: HeaderProps) => {
   };
 
   return (
-    <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-border bg-white/95 backdrop-blur-sm sticky top-0 z-30 shadow-sm">
+    <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b bg-white sticky top-0 z-30 shadow-sm" style={{ borderColor: '#c8e8e8' }}>
       <div className="flex items-center gap-3">
         <button
-          className="icon-btn lg:hidden w-9 h-9 bg-muted text-muted-foreground hover:text-foreground rounded-xl"
+          className="icon-btn w-9 h-9 rounded-xl text-slate-500 hover:text-[#1d6b6b] hover:bg-[#e6f4f4]"
           onClick={() => { interact('click'); onMenuClick(); }}
         >
           <Menu className="w-5 h-5" />
@@ -62,19 +62,19 @@ const Header = ({ onMenuClick, title }: HeaderProps) => {
       </div>
 
       <div className="flex items-center gap-2">
-        <button className="icon-btn w-9 h-9 bg-muted text-muted-foreground hover:text-primary rounded-xl" onClick={() => interact('click')}>
+        <button className="icon-btn w-9 h-9 text-slate-500 hover:text-[#1d6b6b] hover:bg-[#e6f4f4] rounded-xl" onClick={() => interact('click')}>
           <Search className="w-4 h-4" />
         </button>
 
         <button
-          className={cn('icon-btn w-9 h-9 bg-muted text-muted-foreground hover:text-primary rounded-xl', refreshing && 'text-primary')}
+          className={cn('icon-btn w-9 h-9 text-slate-500 hover:text-[#1d6b6b] hover:bg-[#e6f4f4] rounded-xl', refreshing && 'text-[#1d6b6b]')}
           onClick={handleRefresh}
         >
           <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
         </button>
 
         <button
-          className="icon-btn w-9 h-9 bg-muted text-muted-foreground hover:text-amber-500 relative rounded-xl"
+          className="icon-btn w-9 h-9 text-slate-500 hover:text-amber-500 hover:bg-amber-50 relative rounded-xl"
           onClick={() => { interact('warning'); navigate('/alerts'); }}
         >
           <Bell className="w-4 h-4" />
@@ -87,11 +87,13 @@ const Header = ({ onMenuClick, title }: HeaderProps) => {
 
         <div className="relative">
           <button
-            className="flex items-center gap-2 bg-muted/70 rounded-xl px-3 py-2 border border-border hover:border-primary/40 transition-all"
+            className="flex items-center gap-2 bg-[#f0fafa] rounded-xl px-3 py-2 border hover:border-[#1d6b6b]/40 transition-all"
+            style={{ borderColor: '#c8e8e8' }}
             onClick={() => { interact('click'); setShowProfile(!showProfile); }}
           >
-            <div className="w-7 h-7 gradient-emerald rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-bold">{(profile?.full_name || profile?.username || 'م')[0]}</span>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
+              style={{ background: 'linear-gradient(135deg, #1d6b6b, #2a8f8f)' }}>
+              {(profile?.full_name || profile?.username || 'م')[0]}
             </div>
             <div className="hidden sm:block text-right">
               <p className="text-xs font-medium text-foreground leading-tight">{profile?.full_name || profile?.username}</p>

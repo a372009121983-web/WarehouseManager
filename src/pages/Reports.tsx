@@ -364,29 +364,29 @@ const Reports = () => {
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Cairo',Arial,sans-serif;direction:rtl;background:#fff;color:#1a1a1a;font-size:13px;min-height:100vh;display:flex;flex-direction:column}
-.rpt-hdr{background:#1e293b;color:#fff;padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
-.rpt-hdr-title{font-size:28px;font-weight:900;letter-spacing:-1px}
-.rpt-hdr-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:3px}
-.rpt-hdr-right{text-align:left;font-size:12px;color:rgba(255,255,255,.85);line-height:2}
-.rpt-tab-banner{background:#f8fafc;border-bottom:2px solid #e2e8f0;padding:12px 28px;display:flex;align-items:center;gap:10px}
-.rpt-tab-label{font-size:18px;font-weight:700;color:#1e293b}
-.rpt-tab-filter{font-size:12px;color:#64748b}
-.rpt-body{padding:20px 28px;flex:1}
-.kpis{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
-.kpi{border:1.5px solid #e2e8f0;border-radius:10px;padding:12px 16px;min-width:140px;background:#f8fafc}
-.kv{font-size:18px;font-weight:700;color:#1e293b}
+.rpt-hdr{background:#1d6b6b;color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.rpt-hdr-title{font-size:24px;font-weight:900;letter-spacing:-1px}
+.rpt-hdr-sub{font-size:10.5px;color:rgba(255,255,255,.65);margin-top:3px}
+.rpt-hdr-right{text-align:left;font-size:11.5px;color:rgba(255,255,255,.9);line-height:2}
+.rpt-tab-banner{background:#f0fafa;border-bottom:2px solid #1d6b6b;padding:10px 24px;display:flex;align-items:center;gap:10px}
+.rpt-tab-label{font-size:16px;font-weight:700;color:#1d6b6b}
+.rpt-tab-filter{font-size:11.5px;color:#64748b}
+.rpt-body{padding:16px 24px;flex:1}
+.kpis{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.kpi{border:1.5px solid #c8e8e8;border-radius:10px;padding:10px 14px;min-width:130px;background:#f0fafa}
+.kv{font-size:17px;font-weight:700;color:#1d6b6b}
 .kl{font-size:11px;color:#64748b;margin-top:2px}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-thead tr{background:#1e293b}
-th{padding:10px 10px;text-align:right;font-weight:700;color:#fff;white-space:nowrap;font-size:12px}
+thead tr{background:#1d6b6b}
+th{padding:9px 10px;text-align:right;font-weight:700;color:#fff;white-space:nowrap;font-size:12px}
 th:first-child{width:36px;text-align:center}
-td{padding:9px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
 td:first-child{text-align:center;color:#94a3b8;font-size:11px}
-.td-product{font-size:13.5px;font-weight:700;color:#1e293b}
-tr:nth-child(even) td{background:#f8fafc}
-.rpt-footer{background:#1e293b;color:#fff;padding:18px 28px;text-align:center}
-.rpt-footer strong{font-size:22px;font-weight:900;display:block;margin-bottom:4px}
-.rpt-footer p{font-size:11.5px;color:rgba(255,255,255,.6)}
+.td-product{font-size:13px;font-weight:700;color:#1a1a1a}
+tr:nth-child(even) td{background:#f8fafa}
+.rpt-footer{background:#1d6b6b;color:#fff;padding:14px 24px;text-align:center;margin-top:auto}
+.rpt-footer strong{font-size:20px;font-weight:900;display:block;margin-bottom:3px}
+.rpt-footer p{font-size:11px;color:rgba(255,255,255,.65)}
 @media print{body{min-height:0}@page{margin:0;size:A4 landscape}}
 </style></head>
 <body>
@@ -526,9 +526,10 @@ tr:nth-child(even) td{background:#f8fafc}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 border',
                 isActive
-                  ? 'bg-slate-800 text-white border-slate-700 shadow-sm'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-slate-400 hover:text-slate-700'
-              )}>
+                  ? 'text-white border-transparent shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#1d6b6b]/40 hover:text-[#1d6b6b]'
+              )}
+              style={isActive ? { background: 'linear-gradient(135deg, #1d6b6b 0%, #2a8f8f 100%)', border: 'none' } : {}}>
               <Icon className="w-3.5 h-3.5" />
               <span className="hidden md:inline">{tab.label}</span>
               <span className="md:hidden">{tab.shortLabel}</span>

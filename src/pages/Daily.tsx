@@ -181,7 +181,7 @@ const Daily = () => {
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Cairo',Arial,sans-serif;direction:rtl;background:#fff;color:#1a1a1a;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
-.hdr{background:#1e293b;color:#fff;padding:20px 32px;display:flex;align-items:center;justify-content:space-between}
+.hdr{background:#1d6b6b;color:#fff;padding:20px 32px;display:flex;align-items:center;justify-content:space-between}
 .hdr-title{font-size:26px;font-weight:900;letter-spacing:-1px}
 .hdr-sub{font-size:12px;color:rgba(255,255,255,.65);margin-top:4px}
 .hdr-right{text-align:left;font-size:13px;color:rgba(255,255,255,.9);line-height:2.1}

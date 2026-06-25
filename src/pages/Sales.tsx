@@ -83,8 +83,32 @@ const Sales = () => {
     staleTime: 60000,
   });
 
+  // Inventory totals per product (sum across all warehouses)
+  const { data: inventoryTotals = {} } = useQuery<Record<string, number>>({
+    queryKey: ['sales-inventory-totals'],
+    queryFn: async () => {
+      const { data } = await supabase.from('inventory').select('product_id, quantity');
+      const totals: Record<string, number> = {};
+      (data || []).forEach((r: any) => { totals[r.product_id] = (totals[r.product_id] || 0) + r.quantity; });
+      return totals;
+    },
+    staleTime: 30000,
+  });
+
   const addMutation = useMutation({
     mutationFn: async () => {
+      // ── Inventory validation: prevent selling out-of-stock items ──
+      for (const item of saleItems) {
+        if (!item.product_id) continue;
+        const available = inventoryTotals[item.product_id] || 0;
+        if (available <= 0) {
+          throw new Error(`المنتج "${item.product_name}" نفد من المخزون (الكمية المتاحة: 0)`);
+        }
+        if (item.quantity > available) {
+          throw new Error(`المنتج "${item.product_name}" لا تتوفر منه كمية كافية — المتاح: ${available}، المطلوب: ${item.quantity}`);
+        }
+      }
+      // ──────────────────────────────────────────────────────────────
       const total = saleItems.reduce((s, i) => s + i.total_price, 0) - form.discount;
       const autoStatus = calcStatus(total, form.paid_amount);
       const remaining = total - form.paid_amount;
@@ -109,8 +133,20 @@ const Sales = () => {
       if (form.paid_amount > 0 && saleData.customer_id) {
         await supabase.from('customer_payments').insert({ customer_id: saleData.customer_id, customer_name: saleData.customer_name, amount: form.paid_amount, type: 'دفعة', notes: `دفعة أولى - فاتورة ${saleData.id.slice(-6)}`, payment_date: form.sale_date });
       }
+      // ── Deduct inventory after successful sale ──
+      for (const item of saleItems) {
+        if (!item.product_id) continue;
+        const { data: invRows } = await supabase.from('inventory').select('id, quantity').eq('product_id', item.product_id).order('quantity', { ascending: false });
+        let remaining = item.quantity;
+        for (const inv of (invRows || [])) {
+          if (remaining <= 0) break;
+          const deduct = Math.min(remaining, inv.quantity);
+          await supabase.from('inventory').update({ quantity: inv.quantity - deduct, last_updated: new Date().toISOString() }).eq('id', inv.id);
+          remaining -= deduct;
+        }
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['sales'] }); qc.invalidateQueries({ queryKey: ['customers'] }); interact('success'); toast.success('تم تسجيل الفاتورة'); setShowForm(false); setSaleItems([]); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['sales'] }); qc.invalidateQueries({ queryKey: ['customers'] }); qc.invalidateQueries({ queryKey: ['sales-inventory-totals'] }); qc.invalidateQueries({ queryKey: ['products-inventory-totals'] }); interact('success'); toast.success('تم تسجيل الفاتورة'); setShowForm(false); setSaleItems([]); },
     onError: (e: Error) => { interact('error'); toast.error(e.message); },
   });
 
@@ -382,8 +418,17 @@ const Sales = () => {
                       <div key={item.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                         <select value={item.product_id || ''} onChange={e => updateItem(item.id, 'product_id', e.target.value)} className={INPUT_SM}>
                           <option value="">— اختر منتجاً —</option>
-                          {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          {products.map(p => {
+                            const avail = inventoryTotals[p.id] || 0;
+                            return <option key={p.id} value={p.id}>{p.name} {avail > 0 ? `(متاح: ${avail})` : '(نافد ❌)'}</option>;
+                          })}
                         </select>
+                        {item.product_id && (inventoryTotals[item.product_id] || 0) === 0 && (
+                          <p className="text-[10px] text-red-600 font-semibold px-1">⚠️ هذا المنتج نافد من المخزون</p>
+                        )}
+                        {item.product_id && (inventoryTotals[item.product_id] || 0) > 0 && item.quantity > (inventoryTotals[item.product_id] || 0) && (
+                          <p className="text-[10px] text-amber-600 font-semibold px-1">⚠️ الكمية المطلوبة ({item.quantity}) تتجاوز المتاح ({inventoryTotals[item.product_id]})</p>
+                        )}
                         {prod && (prod.min_sale_price || prod.max_sale_price) ? (
                           <p className="text-[10px] text-blue-600 px-1">نطاق البيع: {EGP(prod.min_sale_price || 0)} — {EGP(prod.max_sale_price || 0)}</p>
                         ) : null}

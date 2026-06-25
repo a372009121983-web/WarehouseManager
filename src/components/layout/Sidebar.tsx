@@ -2,13 +2,11 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
-  Warehouse,
   Package,
   BarChart3,
   ArrowLeftRight,
   Bell,
   Settings,
-  ChevronLeft,
   X,
   Archive,
   ShoppingCart,
@@ -21,6 +19,7 @@ import {
   UserCheck,
   AlertTriangle,
   CreditCard,
+  LogOut,
 } from 'lucide-react';
 import { useInteraction } from '@/hooks/useInteraction';
 import { cn } from '@/lib/utils';
@@ -33,8 +32,7 @@ interface SidebarProps {
 }
 
 const allNavItems = [
-  { path: '/',           icon: LayoutDashboard, label: 'لوحة التحكم',       roles: ['admin','warehouse_manager','driver','boss'] },
-  { path: '/warehouses', icon: Warehouse,        label: 'المخازن',           roles: ['admin','warehouse_manager','boss'] },
+  { path: '/',           icon: LayoutDashboard, label: 'الرئيسية',           roles: ['admin','warehouse_manager','driver','boss'] },
   { path: '/inventory',  icon: Archive,          label: 'الجرد والمخزون',    roles: ['admin','warehouse_manager','boss'] },
   { path: '/products',   icon: Package,          label: 'المنتجات',          roles: ['admin','warehouse_manager','boss'] },
   { path: '/sales',      icon: ShoppingCart,     label: 'المبيعات',          roles: ['admin','warehouse_manager','worker','boss'] },
@@ -68,7 +66,6 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
     boss: 'الرئيس',
   };
 
-  // Filter nav items by role
   const navItems = allNavItems.filter(item => item.roles.includes(role));
 
   const { data: unreadCount = 0 } = useQuery({
@@ -88,28 +85,31 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
       )}
 
       <aside className={cn(
-        'fixed top-0 right-0 h-full w-64 z-50 flex flex-col transition-transform duration-300 ease-out',
-        'bg-white border-l border-border/60 shadow-md',
+        'fixed top-0 right-0 h-full w-60 z-50 flex flex-col transition-transform duration-300 ease-out',
+        'bg-white border-l shadow-lg',
+        'border-[#e0f0f0]',
         open ? 'translate-x-0' : 'translate-x-full',
         'lg:translate-x-0 lg:static lg:z-auto'
       )}>
-        <div className="flex items-center justify-between px-5 py-5 border-b border-border">
+        {/* Logo */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#e0f0f0]"
+          style={{ background: 'linear-gradient(135deg, #1d6b6b 0%, #2a8f8f 100%)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl gradient-blue flex items-center justify-center glow-blue">
-              <Warehouse className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+              <Package className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="font-bold text-sm text-foreground leading-tight">الإمري</p>
-              <p className="text-xs text-muted-foreground">نظام إدارة المخازن</p>
+              <p className="font-black text-sm text-white leading-tight">الإمري</p>
+              <p className="text-[10px] text-white/70">نظام إدارة المخازن</p>
             </div>
           </div>
-          <button className="lg:hidden icon-btn w-8 h-8 text-muted-foreground hover:text-foreground" onClick={() => { interact('click'); onClose(); }}>
+          <button className="lg:hidden w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center text-white" onClick={() => { interact('click'); onClose(); }}>
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <nav className="flex-1 py-4 px-3 overflow-y-auto scrollbar-thin">
-          <p className="text-xs text-muted-foreground px-3 mb-3 font-medium">القائمة الرئيسية</p>
+        {/* Nav */}
+        <nav className="flex-1 py-3 px-2.5 overflow-y-auto scrollbar-thin">
           <ul className="space-y-0.5">
             {navItems.map(item => {
               const Icon = item.icon;
@@ -121,19 +121,20 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                       isActive
-                        ? 'bg-primary/15 text-primary border border-primary/25 glow-blue'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                    )}>
-                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 relative', isActive ? 'gradient-blue' : 'bg-white/5')}>
-                      <Icon className="w-4 h-4" />
+                        ? 'text-white shadow-sm'
+                        : 'text-slate-600 hover:text-[#1d6b6b] hover:bg-[#e6f4f4]'
+                    )}
+                    style={isActive ? { background: 'linear-gradient(135deg, #1d6b6b 0%, #2a8f8f 100%)' } : {}}>
+                    <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative',
+                      isActive ? 'bg-white/20' : 'bg-transparent')}>
+                      <Icon className={cn('w-4 h-4', isActive ? 'text-white' : 'text-slate-500')} />
                       {isAlerts && (unreadCount as number) > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] flex items-center justify-center font-bold">
                           {(unreadCount as number) > 9 ? '9+' : unreadCount}
                         </span>
                       )}
                     </div>
-                    <span className="flex-1">{item.label}</span>
-                    {isActive && <ChevronLeft className="w-4 h-4 opacity-60" />}
+                    <span className="flex-1 text-sm">{item.label}</span>
                   </NavLink>
                 </li>
               );
@@ -141,21 +142,22 @@ const Sidebar = ({ open, onClose }: SidebarProps) => {
           </ul>
         </nav>
 
-        <div className="px-4 py-4 border-t border-border">
-          <div className="glass rounded-xl p-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full gradient-emerald flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs font-bold">{(profile?.full_name || profile?.username || 'م').charAt(0)}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{profile?.full_name || profile?.username || 'المستخدم'}</p>
-                <p className="text-xs text-muted-foreground truncate">{roleLabel[role] || role}</p>
-              </div>
-              <button className="icon-btn w-7 h-7 text-muted-foreground hover:text-red-400 flex-shrink-0 glass rounded-lg"
-                onClick={async () => { interact('click'); await signOut(); navigate('/login'); }} title="تسجيل الخروج">
-                <X className="w-3.5 h-3.5" />
-              </button>
+        {/* Footer */}
+        <div className="px-3 py-3 border-t border-[#e0f0f0]">
+          <div className="flex items-center gap-2.5 bg-[#f0fafa] rounded-xl px-3 py-2.5 border border-[#c8e8e8]">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
+              style={{ background: 'linear-gradient(135deg, #1d6b6b 0%, #2a8f8f 100%)' }}>
+              {(profile?.full_name || profile?.username || 'م').charAt(0)}
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 truncate">{profile?.full_name || profile?.username || 'المستخدم'}</p>
+              <p className="text-xs text-slate-500 truncate">{roleLabel[role] || role}</p>
+            </div>
+            <button
+              className="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-[#e0f0f0]"
+              onClick={async () => { interact('click'); await signOut(); navigate('/login'); }} title="تسجيل الخروج">
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </aside>
